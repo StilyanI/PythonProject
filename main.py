@@ -17,7 +17,8 @@ alarms_list = [
 ]
 
 alarm_settings = [
-    [sg.In(size=(40, 1), key="INPUT")],
+    [sg.In(size=(20, 10), key="IN_H"), sg.Text(":"), sg.In(size=(20, 10), key="IN_M")],
+    [sg.Checkbox("Repeat", key='REPEAT')],
     [sg.Button("Add")]
 ]
 
@@ -34,6 +35,11 @@ window = sg.Window("Program", layout)
 
 while True:
     event, values = window.read()
+    if event == "Add":
+        number_of_alarms += 1
+        alarms.append(Alarm(values["IN_H"] + ":" + values["IN_M"], True, values["REPEAT"]))
+        # print(values["IN_H"] + ":" + values["IN_M"])
+        print(alarms[0].repeat)
     if event == "Exit" or event == sg.WIN_CLOSED:
         break
 
