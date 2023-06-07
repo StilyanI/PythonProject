@@ -48,7 +48,6 @@ def check_time():
             tmpTime = currTime
             for i in alarms:
                 if i.hour + ":" + i.minute == tmpTime:
-                    # smeni tva na funkciq za alrmata
                     print("Evala bratle")
         currTime = time.strftime("%H:%M")
         time.sleep(1)
