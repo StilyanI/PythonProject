@@ -1,5 +1,4 @@
 import PySimpleGUI as sg
-import os
 import time
 import threading
 import winsound
@@ -13,10 +12,11 @@ class Alarm:
 
 
 alarms = []
+timesList = []
 
 alarms_list = [
     [sg.Text("Alarms")],
-    [sg.Listbox(alarms, enable_events=True, size=(40, 20), key="LIST")]
+    [sg.Listbox(timesList, enable_events=True, size=(40, 20), key="LIST")]
 ]
 
 hours = []
@@ -35,13 +35,12 @@ for i in range(60):
 alarm_settings = [
     [sg.Combo(hours, size=(10, 10), enable_events=True, readonly=True, key="IN_H"), sg.Text(":"),
      sg.Combo(minutes, size=(10, 10), enable_events=True, readonly=True, key="IN_M")],
-    [sg.Checkbox("Enabled", key='ENABLED', default=True), sg.Checkbox("Repeat", key='REPEAT')],
+    [sg.Checkbox("Enabled", key='ENABLED', default=True), sg.Checkbox("Repeat", key='REPEAT', default=False)],
     [sg.Button("Add"), sg.Button("Delete")]
 ]
 
 layout = [
     [
-        sg.Menubar([["Settings"]]),
         sg.Column(alarms_list),
         sg.VSeparator(),
         sg.Column(alarm_settings),
@@ -49,8 +48,7 @@ layout = [
     ]
 ]
 
-settings = sg.UserSettings(filename="settings.ini", path=os.getcwd(), use_config_file=True)
-sg.theme(settings["GUI"]["theme"])
+sg.theme('DarkAmber')
 window = sg.Window("Program", layout)
 
 
@@ -60,12 +58,41 @@ def check_time():
         for i in alarms:
             if i.time + ":00" == currTime and i.enabled:
                 winsound.PlaySound('alarm_sound.wav', 0)
+                if not i.repeat:
+                    i.enabled = False
+                break
         currTime = time.strftime("%H:%M:%S")
         print(currTime)
         time.sleep(1)
 
 
-timesList = []
+def update():
+    window["LIST"].update(timesList)
+    window["IN_H"].update("")
+    window["IN_M"].update("")
+    window["ENABLED"].update(True)
+    window["REPEAT"].update(False)
+
+
+def addAlarm(h, m, e, r):
+    tmpTime = h + ":" + m
+    if tmpTime in timesList:
+        sg.popup_error("Alarm already exists")
+    elif h == "" or m == "":
+        sg.popup_error("Enter valid values")
+    else:
+        alarms.append(Alarm(tmpTime, e, r))
+        timesList.append(tmpTime)
+
+
+f = open("alarms.txt",'r')
+lines = f.readlines()
+for i in lines:
+    j = i.split('_')
+    hm = j[0].split(":")
+    addAlarm(hm[0], hm[1], j[1], j[2])
+f.close()
+
 thread = threading.Thread(target=check_time)
 stopFlag = False
 thread.start()
@@ -73,26 +100,31 @@ thread.start()
 while True:
     event, values = window.read()
     if event == "Add":
-        tmpTime = values["IN_H"] + ":" + values["IN_M"]
-        alarms.append(Alarm(tmpTime, values["ENABLED"], values["REPEAT"]))
-        timesList.append(tmpTime)
-        window["LIST"].update(timesList)
-        print("Added:" + tmpTime + ":00")
+        addAlarm(values["IN_H"], values["IN_M"], values["ENABLED"], values["REPEAT"])
+        update()
     if event == "Delete":
         tmpTime = values["IN_H"] + ":" + values["IN_M"]
         for i in alarms:
             if i.time == tmpTime:
                 alarms.remove(i)
                 timesList.remove(tmpTime)
-                window["LIST"].update(timesList)
+                update()
     if event == "LIST":
-        selectedTime = values["IN_H"] + ":" + values["IN_M"]
-        values["IN_H"] = values["LIST"][0][0] + values["LIST"][0][1]
-        values["IN_M"] = values["LIST"][0][3] + values["LIST"][0][4]
+        selectedTime = values["LIST"][0]
+        for i in alarms:
+            if i.time == selectedTime:
+                selsectedAlarm = i
+                break
 
-        window["IN_H"].update(values["LIST"][0][0] + values["LIST"][0][1])
-        window["IN_M"].update(values["LIST"][0][3] + values["LIST"][0][4])
+        window["IN_H"].update(selsectedAlarm.time[0] + selsectedAlarm.time[1])
+        window["IN_M"].update(selsectedAlarm.time[3] + selsectedAlarm.time[4])
+        window["ENABLED"].update(selsectedAlarm.enabled)
+        window["REPEAT"].update(selsectedAlarm.repeat)
     if event == "Exit" or event == sg.WIN_CLOSED:
+        f = open("alarms.txt",'w')
+        for i in alarms:
+            f.write(i.time + "_" + str(i.enabled) + "_" + str(i.repeat) + "\n")
+        f.close()
         break
 
 stopFlag = True
