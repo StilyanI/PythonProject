@@ -2,8 +2,7 @@ import PySimpleGUI as sg
 import os
 import time
 import threading
-from pydub import AudioSegment
-from pydub.playback import play
+import winsound
 
 
 class Alarm:
@@ -60,7 +59,7 @@ def check_time():
     while not stopFlag:
         for i in alarms:
             if i.time + ":00" == currTime and i.enabled:
-                play(AudioSegment.from_wav(os.getcwd() + "\\" + "alarm_sound.wav"))
+                winsound.PlaySound('alarm_sound.wav', 0)
         currTime = time.strftime("%H:%M:%S")
         print(currTime)
         time.sleep(1)
@@ -79,7 +78,6 @@ while True:
         timesList.append(tmpTime)
         window["LIST"].update(timesList)
         print("Added:" + tmpTime + ":00")
-        play(AudioSegment.from_wav(os.getcwd() + "\\" + "alarm_sound.wav"))
     if event == "Delete":
         tmpTime = values["IN_H"] + ":" + values["IN_M"]
         for i in alarms:
@@ -87,6 +85,13 @@ while True:
                 alarms.remove(i)
                 timesList.remove(tmpTime)
                 window["LIST"].update(timesList)
+    if event == "LIST":
+        selectedTime = values["IN_H"] + ":" + values["IN_M"]
+        values["IN_H"] = values["LIST"][0][0] + values["LIST"][0][1]
+        values["IN_M"] = values["LIST"][0][3] + values["LIST"][0][4]
+
+        window["IN_H"].update(values["LIST"][0][0] + values["LIST"][0][1])
+        window["IN_M"].update(values["LIST"][0][3] + values["LIST"][0][4])
     if event == "Exit" or event == sg.WIN_CLOSED:
         break
 
