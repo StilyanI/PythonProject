@@ -2,13 +2,14 @@ import PySimpleGUI as sg
 import os
 import time
 import threading
+from pydub import AudioSegment
+from pydub.playback import play
 
 
 class Alarm:
-    def __init__(self, hour, minute, active, repeat):
-        self.hour = hour
-        self.minute = minute
-        self.active = active
+    def __init__(self, time, enabled, repeat):
+        self.time = time
+        self.enabled = enabled
         self.repeat = repeat
 
 
@@ -19,14 +20,29 @@ alarms_list = [
     [sg.Listbox(alarms, enable_events=True, size=(40, 20), key="LIST")]
 ]
 
+hours = []
+minutes = []
+for i in range(24):
+    if i < 10:
+        hours.append('0' + str(i))
+    else:
+        hours.append(str(i))
+for i in range(60):
+    if i < 10:
+        minutes.append('0' + str(i))
+    else:
+        minutes.append(str(i))
+
 alarm_settings = [
-    [sg.In(size=(20, 10), key="IN_H"), sg.Text(":"), sg.In(size=(20, 10), key="IN_M")],
-    [sg.Checkbox("Repeat", key='REPEAT')],
-    [sg.Button("Add")]
+    [sg.Combo(hours, size=(10, 10), enable_events=True, readonly=True, key="IN_H"), sg.Text(":"),
+     sg.Combo(minutes, size=(10, 10), enable_events=True, readonly=True, key="IN_M")],
+    [sg.Checkbox("Enabled", key='ENABLED', default=True), sg.Checkbox("Repeat", key='REPEAT')],
+    [sg.Button("Add"), sg.Button("Delete")]
 ]
 
 layout = [
     [
+        sg.Menubar([["Settings"]]),
         sg.Column(alarms_list),
         sg.VSeparator(),
         sg.Column(alarm_settings),
@@ -40,19 +56,17 @@ window = sg.Window("Program", layout)
 
 
 def check_time():
-    currTime = time.strftime("%H:%M")
-    tmpTime = currTime
+    currTime = time.strftime("%H:%M:%S")
     while not stopFlag:
-        if currTime != tmpTime:
-            print(currTime)
-            tmpTime = currTime
-            for i in alarms:
-                if i.hour + ":" + i.minute == tmpTime:
-                    print("Evala bratle")
-        currTime = time.strftime("%H:%M")
+        for i in alarms:
+            if i.time + ":00" == currTime and i.enabled:
+                play(AudioSegment.from_wav(os.getcwd() + "\\" + "alarm_sound.wav"))
+        currTime = time.strftime("%H:%M:%S")
+        print(currTime)
         time.sleep(1)
 
 
+timesList = []
 thread = threading.Thread(target=check_time)
 stopFlag = False
 thread.start()
@@ -60,14 +74,22 @@ thread.start()
 while True:
     event, values = window.read()
     if event == "Add":
-        alarms.append(Alarm(values["IN_H"], values["IN_M"], True, values["REPEAT"]))
-        list = []
+        tmpTime = values["IN_H"] + ":" + values["IN_M"]
+        alarms.append(Alarm(tmpTime, values["ENABLED"], values["REPEAT"]))
+        timesList.append(tmpTime)
+        window["LIST"].update(timesList)
+        print("Added:" + tmpTime + ":00")
+        play(AudioSegment.from_wav(os.getcwd() + "\\" + "alarm_sound.wav"))
+    if event == "Delete":
+        tmpTime = values["IN_H"] + ":" + values["IN_M"]
         for i in alarms:
-            list.append(i.hour + ":" + i.minute)
-        window["LIST"].update(list)
+            if i.time == tmpTime:
+                alarms.remove(i)
+                timesList.remove(tmpTime)
+                window["LIST"].update(timesList)
     if event == "Exit" or event == sg.WIN_CLOSED:
         break
 
 stopFlag = True
-thread.join()
 window.close()
+thread.join()
